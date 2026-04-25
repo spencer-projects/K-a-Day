@@ -18,6 +18,10 @@
 
           <div class="controls" aria-label="Tracker settings">
             <label>
+              User
+              <input id="user-input" type="text" maxlength="40" spellcheck="false" autocomplete="off">
+            </label>
+            <label>
               Year
               <input id="year-input" type="number" min="2000" max="2100" inputmode="numeric">
             </label>
@@ -44,13 +48,13 @@
           <h2 id="upload-title">Load Garmin activities</h2>
           <p>
             Export your activities CSV from Garmin Connect, then drop it here.
-            The file stays in this browser.
+            Each upload merges into your lifetime list and skips duplicates in this browser.
           </p>
         </div>
 
         <div id="drop-zone" class="drop-zone">
           <input id="csv-input" type="file" accept=".csv,text/csv">
-          <label for="csv-input" class="file-button">Choose Garmin CSV</label>
+          <label for="csv-input" class="file-button">Add Garmin CSV</label>
           <button id="clear-button" type="button" class="ghost-button">Clear saved data</button>
         </div>
       </section>

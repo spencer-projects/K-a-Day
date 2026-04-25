@@ -35,11 +35,10 @@ Change the year or daily goal at the top of the page.
 - `index.html` - app markup
 - `styles.css` - responsive UI
 - `app.js` - CSV parsing, local storage, goal math, and chart drawing
-- `sample-data/activities.csv` - tiny Garmin-like sample export
 
 ## Phone totals
 
-The `docs/` folder is a GitHub Pages-ready phone view that publishes only aggregate totals. It does not include the Garmin CSV, activity rows, titles, or source file path.
+The `docs/` folder is a GitHub Pages-ready phone view that publishes only aggregate totals plus rendered chart images. It does not include the Garmin CSV, activity rows, titles, or source file path.
 
 ### First GitHub Pages publish
 
@@ -72,7 +71,7 @@ After GitHub Pages finishes publishing, the phone site will be available at:
 https://<your-github-user>.github.io/K-A-Day/
 ```
 
-Generate the public totals feed after exporting from Garmin:
+Generate the public totals feed and chart images after exporting from Garmin:
 
 ```sh
 scripts/publish_totals.py

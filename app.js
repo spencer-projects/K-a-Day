@@ -1,4 +1,5 @@
 const STORAGE_KEY = "k-a-day-state";
+const DEFAULT_USER_NAME = "Default";
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const EXCLUDED_ASCENT_TYPES = new Set(["resortskiing"]);
 const CHART_COLORS = {
@@ -25,6 +26,7 @@ const ACTIVITY_SERIES = [
 ];
 
 const els = {
+  userInput: document.querySelector("#user-input"),
   yearInput: document.querySelector("#year-input"),
   dailyGoalInput: document.querySelector("#daily-goal-input"),
   csvInput: document.querySelector("#csv-input"),
@@ -49,34 +51,84 @@ const els = {
 };
 
 const defaultState = {
+  userName: DEFAULT_USER_NAME,
   year: new Date().getFullYear(),
   dailyGoal: 1000,
   activities: [],
   sourceName: ""
 };
 
-let state = loadState();
+let vault = loadVault();
+let state = loadUserState(vault.currentUser);
 
-function loadState() {
+function loadVault() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    return {
-      ...defaultState,
-      ...saved,
-      activities: Array.isArray(saved?.activities) ? saved.activities : []
-    };
+    if (saved?.users && typeof saved.users === "object") {
+      const currentUser = sanitizeUserName(saved.currentUser || DEFAULT_USER_NAME);
+      const users = Object.fromEntries(
+        Object.entries(saved.users).map(([userName, userState]) => [sanitizeUserName(userName), normalizeState(userState, userName)])
+      );
+      if (!users[currentUser]) users[currentUser] = normalizeState({}, currentUser);
+      return { currentUser, users };
+    }
+
+    if (saved && typeof saved === "object") {
+      const migratedUser = sanitizeUserName(saved.userName || DEFAULT_USER_NAME);
+      return {
+        currentUser: migratedUser,
+        users: {
+          [migratedUser]: normalizeState(saved, migratedUser)
+        }
+      };
+    }
   } catch {
-    return { ...defaultState };
+    // fall through to empty vault
   }
+
+  return {
+    currentUser: DEFAULT_USER_NAME,
+    users: {
+      [DEFAULT_USER_NAME]: normalizeState({}, DEFAULT_USER_NAME)
+    }
+  };
+}
+
+function normalizeState(savedState, userName = DEFAULT_USER_NAME) {
+  return {
+    ...defaultState,
+    ...savedState,
+    userName: sanitizeUserName(userName),
+    activities: Array.isArray(savedState?.activities) ? savedState.activities : []
+  };
+}
+
+function loadUserState(userName) {
+  const normalizedUserName = sanitizeUserName(userName);
+  return normalizeState(vault.users[normalizedUserName], normalizedUserName);
 }
 
 function saveState() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  vault.currentUser = state.userName;
+  vault.users[state.userName] = normalizeState(state, state.userName);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(vault));
 }
 
 function init() {
+  els.userInput.value = state.userName;
   els.yearInput.value = state.year;
   els.dailyGoalInput.value = state.dailyGoal;
+
+  els.userInput.addEventListener("change", () => {
+    switchUser(els.userInput.value);
+  });
+
+  els.userInput.addEventListener("keydown", event => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      els.userInput.blur();
+    }
+  });
 
   els.yearInput.addEventListener("input", () => {
     state.year = sanitizeYear(els.yearInput.value);
@@ -133,10 +185,31 @@ function sanitizeYear(value) {
   return defaultState.year;
 }
 
+function sanitizeUserName(value) {
+  const userName = cleanCell(value).replace(/\s+/g, " ");
+  return userName ? userName.slice(0, 40) : DEFAULT_USER_NAME;
+}
+
 function sanitizeGoal(value) {
   const goal = Number.parseInt(value, 10);
   if (Number.isFinite(goal) && goal > 0) return goal;
   return defaultState.dailyGoal;
+}
+
+function switchUser(nextUserName) {
+  const userName = sanitizeUserName(nextUserName);
+  saveState();
+  if (!vault.users[userName]) {
+    vault.users[userName] = normalizeState({
+      year: state.year,
+      dailyGoal: state.dailyGoal
+    }, userName);
+  }
+  vault.currentUser = userName;
+  state = loadUserState(userName);
+  saveState();
+  els.userInput.value = state.userName;
+  render(`Switched to ${state.userName}.`);
 }
 
 function loadFile(file) {
@@ -151,10 +224,11 @@ function loadFile(file) {
 function loadCsv(csvText, sourceName) {
   try {
     const parsed = parseGarminActivities(csvText);
-    state.activities = parsed.activities;
-    state.sourceName = sourceName;
+    const merged = mergeActivities(state.activities, parsed.activities);
+    state.activities = merged.activities;
+    state.sourceName = merged.sourceName || sourceName;
     saveState();
-    render(parsed.note);
+    render(buildMergeNote(parsed.note, merged, sourceName));
   } catch (error) {
     els.parseNote.textContent = error.message;
   }
@@ -193,6 +267,7 @@ function parseGarminActivities(csvText) {
   const ascentHeader = headers[ascentIndex] || "";
   const distanceHeader = headers[distanceIndex] || "";
   let excludedAscentCount = 0;
+  let blankAscentCount = 0;
   const activities = rows.slice(1).map(row => {
     const date = parseActivityDate(row[dateIndex]);
     const rawAscent = parseAscentFeet(row[ascentIndex], ascentHeader);
@@ -201,15 +276,17 @@ function parseGarminActivities(csvText) {
     const title = cleanCell(row[titleIndex]) || cleanCell(row[typeIndex]) || "Activity";
     const type = cleanCell(row[typeIndex]);
     const excludesAscent = shouldExcludeAscent(type);
+    const ascent = Number.isFinite(rawAscent) ? rawAscent : 0;
 
     if (excludesAscent) excludedAscentCount += 1;
+    if (!Number.isFinite(rawAscent)) blankAscentCount += 1;
 
-    return date && Number.isFinite(rawAscent)
+    return date
       ? {
           date: date.toISOString(),
           title,
           type,
-          ascent: excludesAscent ? 0 : Math.max(0, rawAscent),
+          ascent: excludesAscent ? 0 : Math.max(0, ascent),
           distance: Math.max(0, distance || 0),
           durationSeconds: Math.max(0, durationSeconds || 0),
           ascentExcluded: excludesAscent
@@ -226,14 +303,119 @@ function parseGarminActivities(csvText) {
   const unitNote = /meter|\(m\)|\sm$/i.test(ascentHeader)
     ? "Converted ascent from meters to feet."
     : "Assumed ascent values are feet, matching Garmin's exported units.";
+  const blankAscentNote = blankAscentCount
+    ? ` Treated blank ascent as 0 ft for ${blankAscentCount.toLocaleString()} activit${blankAscentCount === 1 ? "y" : "ies"}.`
+    : "";
   const excludeNote = excludedAscentCount
     ? ` Removed ascent from ${excludedAscentCount.toLocaleString()} Resort skiing ${excludedAscentCount === 1 ? "activity" : "activities"}.`
     : "";
 
   return {
     activities,
-    note: `${activities.length.toLocaleString()} activities loaded. ${unitNote}${excludeNote}`
+    note: `${activities.length.toLocaleString()} activities loaded. ${unitNote}${blankAscentNote}${excludeNote}`
   };
+}
+
+function mergeActivities(existingActivities, incomingActivities) {
+  const mergedMap = new Map();
+  let added = 0;
+  let replaced = 0;
+  let skipped = 0;
+
+  for (const activity of existingActivities || []) {
+    mergedMap.set(activityFingerprint(activity), activity);
+  }
+
+  for (const activity of incomingActivities || []) {
+    const key = activityFingerprint(activity);
+    const existing = mergedMap.get(key);
+
+    if (!existing) {
+      mergedMap.set(key, activity);
+      added += 1;
+      continue;
+    }
+
+    if (isMoreCompleteActivity(activity, existing)) {
+      mergedMap.set(key, mergeActivityRecords(existing, activity));
+      replaced += 1;
+    } else {
+      skipped += 1;
+    }
+  }
+
+  const activities = [...mergedMap.values()].sort((a, b) => new Date(a.date) - new Date(b.date));
+  return {
+    activities,
+    added,
+    replaced,
+    skipped,
+    sourceName: "Merged lifetime list"
+  };
+}
+
+function buildMergeNote(parseNote, merged, sourceName) {
+  const mergeBits = [
+    `${merged.added.toLocaleString()} new`,
+    `${merged.skipped.toLocaleString()} duplicate${merged.skipped === 1 ? "" : "s"} skipped`
+  ];
+
+  if (merged.replaced) {
+    mergeBits.splice(1, 0, `${merged.replaced.toLocaleString()} existing upgraded`);
+  }
+
+  return `${parseNote} ${sourceName}: ${mergeBits.join(", ")}. Lifetime list now has ${merged.activities.length.toLocaleString()} activities.`;
+}
+
+function activityFingerprint(activity) {
+  return [
+    new Date(activity.date).toISOString(),
+    normalizeHeader(activity.type || ""),
+    normalizeHeader(activity.title || ""),
+    roundMetric(activity.distance, 3),
+    Number(activity.durationSeconds || activity.duration || 0),
+    Number(activity.ascent || 0)
+  ].join("|");
+}
+
+function mergeActivityRecords(existing, incoming) {
+  return {
+    ...existing,
+    ...incoming,
+    title: chooseBetterText(existing.title, incoming.title),
+    type: chooseBetterText(existing.type, incoming.type),
+    ascent: chooseBetterNumber(existing.ascent, incoming.ascent),
+    distance: chooseBetterNumber(existing.distance, incoming.distance),
+    durationSeconds: chooseBetterNumber(existing.durationSeconds || existing.duration, incoming.durationSeconds || incoming.duration),
+    ascentExcluded: existing.ascentExcluded || incoming.ascentExcluded
+  };
+}
+
+function isMoreCompleteActivity(candidate, current) {
+  return activityCompletenessScore(candidate) > activityCompletenessScore(current);
+}
+
+function activityCompletenessScore(activity) {
+  let score = 0;
+  if (cleanCell(activity.title)) score += 1;
+  if (cleanCell(activity.type)) score += 1;
+  if (Number(activity.distance || 0) > 0) score += 2;
+  if (Number(activity.durationSeconds || activity.duration || 0) > 0) score += 2;
+  if (Number(activity.ascent || 0) > 0 || activity.ascentExcluded) score += 1;
+  return score;
+}
+
+function chooseBetterText(existing, incoming) {
+  return cleanCell(incoming).length >= cleanCell(existing).length ? incoming : existing;
+}
+
+function chooseBetterNumber(existing, incoming) {
+  return Number(incoming || 0) > 0 ? incoming : existing;
+}
+
+function roundMetric(value, digits) {
+  const numeric = Number(value || 0);
+  return Number.isFinite(numeric) ? numeric.toFixed(digits) : "0";
 }
 
 function parseCsv(text) {
@@ -541,6 +723,7 @@ function stripTime(date) {
 
 function render(note) {
   const summary = summarize();
+  els.userInput.value = state.userName;
   els.yearInput.value = summary.year;
   els.dailyGoalInput.value = summary.dailyGoal;
   els.totalAscent.textContent = formatFeet(summary.totalAscent);

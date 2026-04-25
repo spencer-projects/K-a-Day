@@ -3,55 +3,190 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>K-A-Day Totals</title>
+    <title>K-A-Day</title>
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
-    <main class="phone-shell">
-      <header class="topline">
-        <div>
-          <p class="eyebrow">K-A-Day</p>
-          <h1>Current totals</h1>
+    <main class="app-shell">
+      <section class="top-panel" aria-labelledby="app-title">
+        <div class="intro">
+          <div>
+            <p class="eyebrow">Garmin ascent tracker</p>
+            <h1 id="app-title">K-A-Day</h1>
+            <p class="lede">Average 1,000 vertical feet every day.</p>
+          </div>
+
+          <div class="controls" aria-label="Tracker settings">
+            <label>
+              User
+              <input id="user-input" type="text" maxlength="40" spellcheck="false" autocomplete="off">
+            </label>
+            <label>
+              Year
+              <input id="year-input" type="number" min="2000" max="2100" inputmode="numeric">
+            </label>
+            <label>
+              Daily goal
+              <span class="input-suffix">
+                <input id="daily-goal-input" type="number" min="1" step="1" inputmode="numeric">
+                <span>ft</span>
+              </span>
+            </label>
+          </div>
         </div>
-        <p id="status-pill" class="status-pill">Loading</p>
-      </header>
 
-      <figure class="trail-strip" aria-label="Mountain ridge">
-        <img
-          src="https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1200&q=80"
-          alt="Sunlit mountain ridge"
-        >
-      </figure>
-
-      <section class="hero-total" aria-labelledby="ascent-label">
-        <span id="ascent-label">Year-to-date ascent</span>
-        <strong id="total-ascent">--</strong>
-        <p id="gap-line">Waiting for totals.</p>
+        <figure class="mountain-image" aria-label="Mountain trail">
+          <img
+            src="https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1400&q=80"
+            alt="Sunlit mountain ridge above a trail"
+          >
+        </figure>
       </section>
 
-      <section class="metric-grid" aria-label="Progress totals">
-        <article>
+      <section class="upload-panel" aria-labelledby="upload-title">
+        <div>
+          <h2 id="upload-title">Load Garmin activities</h2>
+          <p>
+            Export your activities CSV from Garmin Connect, then drop it here.
+            Each upload merges into your lifetime list and skips duplicates in this browser.
+          </p>
+        </div>
+
+        <div id="drop-zone" class="drop-zone">
+          <input id="csv-input" type="file" accept=".csv,text/csv">
+          <label for="csv-input" class="file-button">Add Garmin CSV</label>
+          <button id="clear-button" type="button" class="ghost-button">Clear saved data</button>
+        </div>
+      </section>
+
+      <section class="stats-grid" aria-label="Progress summary">
+        <article class="stat-card">
+          <span>Year-to-date ascent</span>
+          <strong id="total-ascent">0 ft</strong>
+        </article>
+        <article class="stat-card">
           <span>Target today</span>
-          <strong id="target-ascent">--</strong>
+          <strong id="target-ascent">0 ft</strong>
         </article>
-        <article>
+        <article class="stat-card">
+          <span>Gap</span>
+          <strong id="gap-ascent">0 ft</strong>
+        </article>
+        <article class="stat-card">
           <span>Daily average</span>
-          <strong id="daily-average">--</strong>
-        </article>
-        <article>
-          <span>Mileage</span>
-          <strong id="total-distance">--</strong>
-        </article>
-        <article>
-          <span>Activity time</span>
-          <strong id="total-duration">--</strong>
+          <strong id="daily-average">0 ft</strong>
         </article>
       </section>
 
-      <section class="details" aria-label="Refresh details">
-        <p><span>Activities</span><strong id="activity-count">--</strong></p>
-        <p><span>Latest activity</span><strong id="latest-activity">--</strong></p>
-        <p><span>Refreshed</span><strong id="generated-at">--</strong></p>
+      <div class="ascent-layout">
+        <section class="type-totals" aria-labelledby="type-totals-title">
+          <div class="section-heading">
+            <div>
+              <h2 id="type-totals-title">By activity</h2>
+              <p>Year-to-date totals for the tracked activity buckets.</p>
+            </div>
+          </div>
+          <div id="activity-totals" class="type-total-grid"></div>
+        </section>
+
+        <section class="chart-panel" aria-labelledby="chart-title">
+          <div class="chart-heading">
+            <div>
+              <h2 id="chart-title">Actual vs target</h2>
+              <p id="chart-subtitle">Load a Garmin CSV to start tracking.</p>
+            </div>
+            <div class="legend" aria-label="Chart legend">
+              <span><i class="actual-key"></i>Actual</span>
+              <span><i class="target-key"></i>Target</span>
+              <span><i class="running-key"></i>Running</span>
+              <span><i class="biking-key"></i>Biking</span>
+              <span><i class="skiing-key"></i>Skiing</span>
+              <span><i class="climbing-key"></i>Climbing</span>
+            </div>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="progress-chart" width="1200" height="640" aria-label="Cumulative ascent chart" role="img"></canvas>
+          </div>
+        </section>
+      </div>
+
+      <section class="metrics-panel" aria-labelledby="metrics-title">
+        <div class="chart-heading">
+          <div>
+            <h2 id="metrics-title">Mileage and time</h2>
+            <p id="metrics-subtitle">Cumulative totals through today, with lighter lines by activity.</p>
+          </div>
+          <div class="legend" aria-label="Metric chart legend">
+            <span><i class="actual-key"></i>Total</span>
+            <span><i class="running-key"></i>Running</span>
+            <span><i class="biking-key"></i>Biking</span>
+            <span><i class="skiing-key"></i>Skiing</span>
+            <span><i class="climbing-key"></i>Climbing</span>
+          </div>
+        </div>
+        <div class="metric-chart-grid">
+          <div class="metric-chart">
+            <h3>Mileage</h3>
+            <canvas id="mileage-chart" class="metric-canvas" width="900" height="360" aria-label="Cumulative mileage chart" role="img"></canvas>
+          </div>
+          <div class="metric-chart">
+            <h3>Activity time</h3>
+            <canvas id="time-chart" class="metric-canvas" width="900" height="360" aria-label="Cumulative activity time chart" role="img"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <section class="monthly-panel" aria-labelledby="monthly-title">
+        <div class="activity-heading">
+          <div>
+            <h2 id="monthly-title">Monthly totals</h2>
+            <p id="monthly-count">Totals through the selected year so far.</p>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Month</th>
+                <th>Activities</th>
+                <th>Ascent</th>
+                <th>Mileage</th>
+                <th>Time</th>
+              </tr>
+            </thead>
+            <tbody id="monthly-table">
+              <tr>
+                <td colspan="5">Monthly totals will appear here.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="activity-panel" aria-labelledby="activity-title">
+        <div class="activity-heading">
+          <div>
+            <h2 id="activity-title">Recent climbs</h2>
+            <p id="activity-count">No activities loaded yet.</p>
+          </div>
+          <div id="parse-note" class="parse-note" role="status"></div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Activity</th>
+                <th>Ascent</th>
+              </tr>
+            </thead>
+            <tbody id="activity-table">
+              <tr>
+                <td colspan="3">Your exported activities will appear here.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </section>
     </main>
 

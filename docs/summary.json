@@ -1,10 +1,10 @@
 {
   "year": 2026,
   "dailyGoal": 1000,
-  "totalAscent": 132399,
-  "totalDistance": 1084.49,
-  "totalDurationSeconds": 864986,
-  "activityCount": 157,
-  "latestActivityDate": "2026-04-20",
-  "generatedAt": "2026-04-24T23:07:55-07:00"
+  "totalAscent": 101496,
+  "totalDistance": 836.85,
+  "totalDurationSeconds": 672413,
+  "activityCount": 120,
+  "latestActivityDate": "2026-04-24",
+  "generatedAt": "2026-04-25T00:14:28-07:00"
 }
