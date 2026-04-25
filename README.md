@@ -6,7 +6,7 @@ This version runs entirely in the browser. It stores each person's activity hist
 
 ## Run it locally
 
-The app is static, but it uses JavaScript modules, so the easiest local option is a tiny file server:
+You can either open `index.html` directly or use a tiny local file server:
 
 ```sh
 python3 -m http.server 8000
@@ -43,7 +43,6 @@ The `User` field is now a local profile name, not a shared account.
 - Uploading a CSV merges new activities into that local profile's lifetime list.
 - Friends can use the public GitHub Pages site independently, or clone the repo and run it locally with their own browser storage.
 - No uploaded activity data is shared between people unless they manually share CSV files.
-- The `Leaderboard` tab compares all saved local profiles in the current browser on one chart.
 
 ## Garmin export
 

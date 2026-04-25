@@ -1,6 +1,6 @@
+(function () {
 const {
   CHART_COLORS,
-  colorForMember,
   summarizeActivities,
   sanitizeGoal,
   sanitizeYear,
@@ -9,8 +9,7 @@ const {
   formatDuration,
   formatDayOfYear,
   renderAscentChart,
-  renderMetricChart,
-  renderComparisonChart
+  renderMetricChart
 } = window.KADAY_SHARED;
 
 const STORAGE_KEY = "kaday-static-state-v1";
@@ -21,10 +20,6 @@ const els = {
   userInput: document.querySelector("#user-input"),
   yearInput: document.querySelector("#year-input"),
   dailyGoalInput: document.querySelector("#daily-goal-input"),
-  trackerTab: document.querySelector("#tracker-tab"),
-  leaderboardTab: document.querySelector("#leaderboard-tab"),
-  trackerViews: document.querySelectorAll(".view-tracker"),
-  leaderboardViews: document.querySelectorAll(".view-leaderboard"),
   csvInput: document.querySelector("#csv-input"),
   dropZone: document.querySelector("#drop-zone"),
   clearButton: document.querySelector("#clear-button"),
@@ -43,26 +38,18 @@ const els = {
   parseNote: document.querySelector("#parse-note"),
   activityTable: document.querySelector("#activity-table"),
   monthlyTable: document.querySelector("#monthly-table"),
-  statCards: document.querySelectorAll(".stat-card"),
-  leaderboardCount: document.querySelector("#leaderboard-count"),
-  leaderboardLeading: document.querySelector("#leaderboard-leading"),
-  leaderboardTotal: document.querySelector("#leaderboard-total"),
-  leaderboardDistance: document.querySelector("#leaderboard-distance"),
-  leaderboardChart: document.querySelector("#leaderboard-chart"),
-  leaderboardLegend: document.querySelector("#leaderboard-legend"),
-  leaderboardSubtitle: document.querySelector("#leaderboard-subtitle"),
-  leaderboardCopy: document.querySelector("#leaderboard-copy"),
-  leaderboardTable: document.querySelector("#leaderboard-table")
+  statCards: document.querySelectorAll(".stat-card")
 };
 
 const saved = loadState();
 const state = {
   currentUser: saved.currentUser,
   profiles: saved.profiles,
-  activeTab: saved.activeTab || "tracker",
   note: "",
-  sourceName: currentProfile().sourceName || ""
+  sourceName: ""
 };
+
+state.sourceName = currentProfile().sourceName || "";
 
 init();
 
@@ -77,6 +64,10 @@ function wireEvents() {
     switchUser(els.userInput.value);
   });
 
+  els.userInput.addEventListener("blur", () => {
+    switchUser(els.userInput.value);
+  });
+
   els.userInput.addEventListener("keydown", event => {
     if (event.key === "Enter") {
       event.preventDefault();
@@ -86,12 +77,14 @@ function wireEvents() {
   });
 
   els.yearInput.addEventListener("input", () => {
+    commitPendingUserInput();
     currentProfile().year = sanitizeYear(els.yearInput.value);
     persistState();
     render();
   });
 
   els.dailyGoalInput.addEventListener("change", () => {
+    commitPendingUserInput();
     currentProfile().dailyGoal = sanitizeGoal(els.dailyGoalInput.value);
     persistState();
     render();
@@ -103,8 +96,6 @@ function wireEvents() {
   });
 
   els.clearButton.addEventListener("click", clearActivities);
-  els.trackerTab.addEventListener("click", () => setActiveTab("tracker"));
-  els.leaderboardTab.addEventListener("click", () => setActiveTab("leaderboard"));
 
   ["dragenter", "dragover"].forEach(type => {
     els.dropZone.addEventListener(type, event => {
@@ -139,17 +130,12 @@ function loadState() {
     for (const key of Object.keys(profiles)) {
       profiles[key] = hydrateProfile(profiles[key], key);
     }
-    return {
-      currentUser,
-      profiles,
-      activeTab: parsed.activeTab === "leaderboard" ? "leaderboard" : "tracker"
-    };
+    return { currentUser, profiles };
   } catch {
     const currentUser = "Default";
     return {
       currentUser,
-      profiles: { [normalizeName(currentUser)]: createProfile(currentUser) },
-      activeTab: "tracker"
+      profiles: { [normalizeName(currentUser)]: createProfile(currentUser) }
     };
   }
 }
@@ -206,13 +192,22 @@ function syncInputs() {
 
 async function uploadCsv(file) {
   try {
+    commitPendingUserInput();
     const csvText = await file.text();
     const parsed = parseGarminCsv(csvText);
     const merged = mergeActivities(currentProfile().activities, parsed.activities);
     currentProfile().activities = merged.activities;
     currentProfile().sourceName = file.name;
     state.sourceName = file.name;
-    state.note = `${parsed.note} ${file.name}: ${merged.added.toLocaleString()} new, ${merged.replaced.toLocaleString()} upgraded, ${merged.skipped.toLocaleString()} duplicates skipped. Lifetime list now has ${merged.activities.length.toLocaleString()} activities.`;
+    const uploadYear = getLatestActivityYear(parsed.activities);
+    const currentYearHasActivities = merged.activities.some(activity => new Date(activity.date).getFullYear() === currentProfile().year);
+    if (!currentYearHasActivities && uploadYear) {
+      currentProfile().year = uploadYear;
+    }
+    const yearNote = !currentYearHasActivities && uploadYear
+      ? ` Switched year to ${uploadYear} to show the imported activities.`
+      : "";
+    state.note = `${parsed.note} ${file.name}: ${merged.added.toLocaleString()} new, ${merged.replaced.toLocaleString()} upgraded, ${merged.skipped.toLocaleString()} duplicates skipped. Lifetime list now has ${merged.activities.length.toLocaleString()} activities.${yearNote}`;
     persistState();
     render();
   } catch (error) {
@@ -224,6 +219,7 @@ async function uploadCsv(file) {
 }
 
 function clearActivities() {
+  commitPendingUserInput();
   const profile = currentProfile();
   if (!window.confirm(`Clear every saved activity for ${profile.username}?`)) return;
   profile.activities = [];
@@ -241,10 +237,8 @@ function render() {
     year: profile.year,
     dailyGoal: profile.dailyGoal
   });
-  const leaderboard = buildLeaderboard(profile.year);
 
   syncInputs();
-  applyActiveTab();
 
   els.totalAscent.textContent = formatFeet(summary.totalAscent);
   els.targetAscent.textContent = formatFeet(summary.targetAscent);
@@ -272,7 +266,6 @@ function render() {
   renderActivityTable(summary.inYearActivities);
   renderMonthlyTotals(summary.monthlyTotals);
   renderCharts(summary);
-  renderLeaderboard(leaderboard, profile.year);
 }
 
 function renderActivityTotals(typeTotals) {
@@ -346,29 +339,8 @@ function renderCharts(summary) {
 function persistState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({
     currentUser: state.currentUser,
-    profiles: state.profiles,
-    activeTab: state.activeTab
+    profiles: state.profiles
   }));
-}
-
-function setActiveTab(tab) {
-  state.activeTab = tab === "leaderboard" ? "leaderboard" : "tracker";
-  persistState();
-  applyActiveTab();
-}
-
-function applyActiveTab() {
-  const trackerActive = state.activeTab !== "leaderboard";
-  els.trackerTab.classList.toggle("is-active", trackerActive);
-  els.trackerTab.setAttribute("aria-pressed", String(trackerActive));
-  els.leaderboardTab.classList.toggle("is-active", !trackerActive);
-  els.leaderboardTab.setAttribute("aria-pressed", String(!trackerActive));
-  els.trackerViews.forEach(element => {
-    element.hidden = !trackerActive;
-  });
-  els.leaderboardViews.forEach(element => {
-    element.hidden = trackerActive;
-  });
 }
 
 function sanitizeUserName(value) {
@@ -376,70 +348,23 @@ function sanitizeUserName(value) {
   return cleaned.slice(0, 40) || "Default";
 }
 
+function commitPendingUserInput() {
+  const typed = sanitizeUserName(els.userInput.value || state.currentUser);
+  if (typed !== state.currentUser) switchUser(typed);
+}
+
 function normalizeName(value) {
   return sanitizeUserName(value).toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
-function buildLeaderboard(year) {
-  return Object.values(state.profiles)
-    .map((profile, index) => ({
-      username: profile.username,
-      color: colorForMember(index),
-      summary: summarizeActivities({
-        activities: profile.activities,
-        year,
-        dailyGoal: profile.dailyGoal
-      })
-    }))
-    .sort((left, right) => (
-      right.summary.totalAscent - left.summary.totalAscent ||
-      right.summary.totalDistance - left.summary.totalDistance ||
-      left.username.localeCompare(right.username)
-    ));
+function getLatestActivityYear(activities) {
+  const latest = (activities || []).reduce((best, activity) => {
+    const timestamp = new Date(activity.date).getTime();
+    return Number.isFinite(timestamp) && timestamp > best ? timestamp : best;
+  }, 0);
+  return latest ? new Date(latest).getFullYear() : 0;
 }
 
-function renderLeaderboard(leaderboard, year) {
-  const leading = leaderboard.reduce((best, member) => Math.max(best, member.summary.totalAscent), 0);
-  const totalAscent = leaderboard.reduce((sum, member) => sum + member.summary.totalAscent, 0);
-  const totalDistance = leaderboard.reduce((sum, member) => sum + member.summary.totalDistance, 0);
-
-  els.leaderboardCount.textContent = leaderboard.length.toLocaleString();
-  els.leaderboardLeading.textContent = formatFeet(leading);
-  els.leaderboardTotal.textContent = formatFeet(totalAscent);
-  els.leaderboardDistance.textContent = formatMiles(totalDistance);
-  els.leaderboardSubtitle.textContent = leaderboard.length
-    ? `Every saved profile in this browser for ${year}.`
-    : `No saved profiles found for ${year}.`;
-  els.leaderboardCopy.textContent = leaderboard.length
-    ? `${leaderboard.length.toLocaleString()} local profiles ranked for ${year}.`
-    : "Create another local user name to start comparing profiles in this browser.";
-
-  els.leaderboardLegend.innerHTML = leaderboard.length
-    ? leaderboard.map(member => `<span><i style="background:${member.color}"></i>${escapeHtml(member.username)}</span>`).join("")
-    : `<span><i class="actual-key"></i>No saved profiles yet</span>`;
-
-  if (!leaderboard.length) {
-    els.leaderboardTable.innerHTML = `<tr><td colspan="6">Leaderboard rows will appear here.</td></tr>`;
-  } else {
-    els.leaderboardTable.innerHTML = leaderboard.map((member, index) => `
-      <tr>
-        <td>${index + 1}</td>
-        <td>${escapeHtml(member.username)}</td>
-        <td>${member.summary.inYearActivities.length.toLocaleString()}</td>
-        <td>${formatFeet(member.summary.totalAscent)}</td>
-        <td>${formatMiles(member.summary.totalDistance)}</td>
-        <td>${formatDuration(member.summary.totalDuration)}</td>
-      </tr>
-    `).join("");
-  }
-
-  const series = leaderboard.map(member => ({
-    label: member.username,
-    color: member.color,
-    points: member.summary.currentPoints.map(point => ({ day: point.day, value: point.actual }))
-  }));
-  renderComparisonChart(els.leaderboardChart, year, series);
-}
 
 function parseGarminCsv(csvText) {
   const rows = splitCsvRows(csvText);
@@ -680,3 +605,4 @@ function escapeHtml(value) {
     "'": "&#039;"
   }[char]));
 }
+})();

@@ -43,12 +43,7 @@
         </figure>
       </section>
 
-      <section class="nav-panel" aria-label="Views">
-        <button id="tracker-tab" class="nav-link is-active" type="button" aria-pressed="true">Tracker</button>
-        <button id="leaderboard-tab" class="nav-link" type="button" aria-pressed="false">Leaderboard</button>
-      </section>
-
-      <section class="upload-panel view-panel view-tracker" aria-labelledby="upload-title">
+      <section class="upload-panel" aria-labelledby="upload-title">
         <div>
           <h2 id="upload-title">Load Garmin activities</h2>
           <p>
@@ -64,7 +59,7 @@
         </div>
       </section>
 
-      <section class="stats-grid view-panel view-tracker" aria-label="Progress summary">
+      <section class="stats-grid" aria-label="Progress summary">
         <article class="stat-card">
           <span>Year-to-date ascent</span>
           <strong id="total-ascent">0 ft</strong>
@@ -83,7 +78,7 @@
         </article>
       </section>
 
-      <div class="ascent-layout view-panel view-tracker">
+      <div class="ascent-layout">
         <section class="type-totals" aria-labelledby="type-totals-title">
           <div class="section-heading">
             <div>
@@ -115,7 +110,7 @@
         </section>
       </div>
 
-      <section class="metrics-panel view-panel view-tracker" aria-labelledby="metrics-title">
+      <section class="metrics-panel" aria-labelledby="metrics-title">
         <div class="chart-heading">
           <div>
             <h2 id="metrics-title">Mileage and time</h2>
@@ -141,7 +136,7 @@
         </div>
       </section>
 
-      <section class="monthly-panel view-panel view-tracker" aria-labelledby="monthly-title">
+      <section class="monthly-panel" aria-labelledby="monthly-title">
         <div class="activity-heading">
           <div>
             <h2 id="monthly-title">Monthly totals</h2>
@@ -168,7 +163,7 @@
         </div>
       </section>
 
-      <section class="activity-panel view-panel view-tracker" aria-labelledby="activity-title">
+      <section class="activity-panel" aria-labelledby="activity-title">
         <div class="activity-heading">
           <div>
             <h2 id="activity-title">Recent climbs</h2>
@@ -188,65 +183,6 @@
             <tbody id="activity-table">
               <tr>
                 <td colspan="3">Your exported activities will appear here.</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <section class="crew-panel view-panel view-leaderboard" aria-labelledby="leaderboard-title" hidden>
-        <div class="chart-heading">
-          <div>
-            <h2 id="leaderboard-title">Local leaderboard</h2>
-            <p id="leaderboard-subtitle">Every saved profile in this browser for the selected year.</p>
-          </div>
-          <div id="leaderboard-legend" class="legend" aria-label="Leaderboard legend"></div>
-        </div>
-
-        <div class="stats-grid crew-stats" aria-label="Leaderboard summary">
-          <article class="stat-card">
-            <span>Profiles</span>
-            <strong id="leaderboard-count">0</strong>
-          </article>
-          <article class="stat-card">
-            <span>Leading total</span>
-            <strong id="leaderboard-leading">0 ft</strong>
-          </article>
-          <article class="stat-card">
-            <span>Combined total</span>
-            <strong id="leaderboard-total">0 ft</strong>
-          </article>
-          <article class="stat-card">
-            <span>Combined mileage</span>
-            <strong id="leaderboard-distance">0 mi</strong>
-          </article>
-        </div>
-
-        <div class="chart-wrap">
-          <canvas id="leaderboard-chart" width="1200" height="640" aria-label="Leaderboard ascent chart" role="img"></canvas>
-        </div>
-
-        <div class="activity-heading crew-table-heading">
-          <div>
-            <h2>Rankings</h2>
-            <p id="leaderboard-copy">Saved profiles in this browser.</p>
-          </div>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Rank</th>
-                <th>User</th>
-                <th>Activities</th>
-                <th>Ascent</th>
-                <th>Mileage</th>
-                <th>Time</th>
-              </tr>
-            </thead>
-            <tbody id="leaderboard-table">
-              <tr>
-                <td colspan="6">Leaderboard rows will appear here.</td>
               </tr>
             </tbody>
           </table>

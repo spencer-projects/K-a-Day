@@ -53,7 +53,6 @@ input {
 .chart-panel,
 .metrics-panel,
 .type-totals,
-.crew-panel,
 .monthly-panel,
 .group-actions-panel,
 .activity-panel {
@@ -349,7 +348,6 @@ input[type="file"] {
 .chart-panel,
 .metrics-panel,
 .type-totals,
-.crew-panel,
 .monthly-panel,
 .group-actions-panel,
 .activity-panel {
@@ -387,20 +385,6 @@ input[type="file"] {
 
 .activity-panel th {
   font-size: 11px;
-}
-
-.crew-panel .chart-wrap {
-  margin-top: 14px;
-}
-
-.crew-stats {
-  margin-top: 0;
-  margin-bottom: 14px;
-}
-
-.crew-table-heading {
-  margin-top: 14px;
-  margin-bottom: 8px;
 }
 
 .ascent-layout {
@@ -602,10 +586,6 @@ canvas.metric-canvas {
   overflow-x: auto;
 }
 
-.view-panel[hidden] {
-  display: none !important;
-}
-
 table {
   width: 100%;
   border-collapse: collapse;
@@ -701,7 +681,6 @@ th:last-child {
   .chart-panel,
   .metrics-panel,
   .type-totals,
-  .crew-panel,
   .monthly-panel,
   .group-actions-panel,
   .activity-panel {
