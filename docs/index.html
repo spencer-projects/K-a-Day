@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>K-A-Day Totals</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="phone-shell">
+      <header class="topline">
+        <div>
+          <p class="eyebrow">K-A-Day</p>
+          <h1>Current totals</h1>
+        </div>
+        <p id="status-pill" class="status-pill">Loading</p>
+      </header>
+
+      <figure class="trail-strip" aria-label="Mountain ridge">
+        <img
+          src="https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1200&q=80"
+          alt="Sunlit mountain ridge"
+        >
+      </figure>
+
+      <section class="hero-total" aria-labelledby="ascent-label">
+        <span id="ascent-label">Year-to-date ascent</span>
+        <strong id="total-ascent">--</strong>
+        <p id="gap-line">Waiting for totals.</p>
+      </section>
+
+      <section class="metric-grid" aria-label="Progress totals">
+        <article>
+          <span>Target today</span>
+          <strong id="target-ascent">--</strong>
+        </article>
+        <article>
+          <span>Daily average</span>
+          <strong id="daily-average">--</strong>
+        </article>
+        <article>
+          <span>Mileage</span>
+          <strong id="total-distance">--</strong>
+        </article>
+        <article>
+          <span>Activity time</span>
+          <strong id="total-duration">--</strong>
+        </article>
+      </section>
+
+      <section class="details" aria-label="Refresh details">
+        <p><span>Activities</span><strong id="activity-count">--</strong></p>
+        <p><span>Latest activity</span><strong id="latest-activity">--</strong></p>
+        <p><span>Refreshed</span><strong id="generated-at">--</strong></p>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
