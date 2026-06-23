@@ -14,6 +14,12 @@ const CHART_COLORS = {
 const ACTIVITY_SERIES = [
   { id: "running", label: "Running", color: "#58b77a", match: type => type.includes("run") },
   {
+    id: "hiking",
+    label: "Hiking",
+    color: "#d98257",
+    match: type => type.includes("hike") || type.includes("hiking") || type.includes("walk") || type.includes("mountaineer")
+  },
+  {
     id: "biking",
     label: "Biking",
     color: "#4f9cb7",
