@@ -24,10 +24,10 @@ EXCLUDED_ASCENT_TYPES = {"resortskiing"}
 MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 ACTIVITY_SERIES = (
     {"id": "running", "label": "Running", "color": "#58b77a", "keywords": ("run",)},
-    {"id": "hiking", "label": "Hiking", "color": "#d98257", "keywords": ("hike", "hiking", "walk", "mountaineer")},
+    {"id": "hiking", "label": "Hiking", "color": "#d98257", "keywords": ("hike", "hiking", "walk")},
     {"id": "biking", "label": "Biking", "color": "#4f9cb7", "keywords": ("bike", "biking", "cycling", "ride")},
     {"id": "skiing", "label": "Skiing", "color": "#8d96cf", "keywords": ("ski",)},
-    {"id": "climbing", "label": "Climbing", "color": "#b58e24", "keywords": ("climb", "boulder")},
+    {"id": "climbing", "label": "Climbing", "color": "#b58e24", "keywords": ("climb", "boulder", "mountaineer")},
 )
 CHART_COLORS = {
     "background": "#f4f7f1",

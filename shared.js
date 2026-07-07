@@ -17,7 +17,7 @@ const ACTIVITY_SERIES = [
     id: "hiking",
     label: "Hiking",
     color: "#d98257",
-    match: type => type.includes("hike") || type.includes("hiking") || type.includes("walk") || type.includes("mountaineer")
+    match: type => type.includes("hike") || type.includes("hiking") || type.includes("walk")
   },
   {
     id: "biking",
@@ -26,7 +26,7 @@ const ACTIVITY_SERIES = [
     match: type => type.includes("bike") || type.includes("biking") || type.includes("cycling") || type.includes("ride")
   },
   { id: "skiing", label: "Skiing", color: "#8d96cf", match: type => type.includes("ski") },
-  { id: "climbing", label: "Climbing", color: "#b58e24", match: type => type.includes("climb") || type.includes("boulder") }
+  { id: "climbing", label: "Climbing", color: "#b58e24", match: type => type.includes("climb") || type.includes("boulder") || type.includes("mountaineer") }
 ];
 const MEMBER_COLORS = ["#36c7a5", "#55c7d8", "#f0bd3f", "#ff6b7f", "#8d96cf", "#58b77a", "#f28d35", "#c987ff"];
 
