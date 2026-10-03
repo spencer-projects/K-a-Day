@@ -21,6 +21,7 @@ DEFAULT_CSV = Path("/Users/spencer/Downloads/Activities_2023-2025.csv")
 DEFAULT_OUTPUT = Path("docs/summary.json")
 DEFAULT_DAILY_GOAL = 1000
 EXCLUDED_ASCENT_TYPES = {"resortskiing"}
+YARDS_PER_MILE = 1760
 MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 ACTIVITY_SERIES = (
     {"id": "running", "label": "Running", "color": "#58b77a", "keywords": ("run",)},
@@ -181,9 +182,11 @@ def parse_publication(csv_path: Path, year: int, daily_goal: int) -> tuple[Total
                     activity_date=activity_date,
                     activity_type=activity_type,
                     ascent_feet=0
-                    if activity_type in EXCLUDED_ASCENT_TYPES
+                    if should_exclude_ascent(activity_type)
                     else parse_ascent_feet(cell(row, columns.ascent), ascent_header),
-                    distance_miles=parse_distance_miles(cell(row, columns.distance), distance_header),
+                    distance_miles=parse_distance_miles(
+                        cell(row, columns.distance), distance_header, activity_type
+                    ),
                     duration_seconds=parse_duration_seconds(cell(row, columns.duration)),
                 )
             )
@@ -305,15 +308,26 @@ def parse_ascent_feet(value: str, header: str) -> int:
     return round(numeric * 3.28084) if is_meters else round(numeric)
 
 
-def parse_distance_miles(value: str, header: str) -> float:
+def parse_distance_miles(value: str, header: str, activity_type: str = "") -> float:
     text = value.strip()
     if not text or text == "--":
         return 0.0
     numeric = parse_number(text)
     if not math.isfinite(numeric):
         return 0.0
+    if is_swimming_activity(activity_type):
+        return numeric / YARDS_PER_MILE
     is_kilometers = bool(re.search(r"kilometer|kilometre|\bkm\b", f"{header} {text}", re.I))
     return numeric * 0.621371 if is_kilometers else numeric
+
+
+def is_swimming_activity(activity_type: str) -> bool:
+    return "swim" in normalize(activity_type)
+
+
+def should_exclude_ascent(activity_type: str) -> bool:
+    normalized_type = normalize(activity_type)
+    return normalized_type in EXCLUDED_ASCENT_TYPES or is_swimming_activity(normalized_type)
 
 
 def parse_duration_seconds(value: str) -> int:

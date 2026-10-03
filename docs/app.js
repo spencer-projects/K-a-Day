@@ -15,6 +15,7 @@ const {
 const STORAGE_KEY = "kaday-static-state-v1";
 const DEFAULT_YEAR = new Date().getFullYear();
 const DEFAULT_DAILY_GOAL = 1000;
+const YARDS_PER_MILE = 1760;
 
 const els = {
   userInput: document.querySelector("#user-input"),
@@ -54,6 +55,7 @@ state.sourceName = currentProfile().sourceName || "";
 init();
 
 function init() {
+  persistState();
   wireEvents();
   syncInputs();
   render();
@@ -142,12 +144,23 @@ function loadState() {
 
 function hydrateProfile(profile, fallbackKey) {
   const username = sanitizeUserName(profile?.username || fallbackKey || "Default");
+  const activities = Array.isArray(profile?.activities) ? profile.activities.map(hydrateActivity) : [];
   return {
     username,
     year: sanitizeYear(profile?.year || DEFAULT_YEAR),
     dailyGoal: sanitizeGoal(profile?.dailyGoal || DEFAULT_DAILY_GOAL),
     sourceName: String(profile?.sourceName || ""),
-    activities: Array.isArray(profile?.activities) ? profile.activities : []
+    activities: mergeActivities([], activities).activities
+  };
+}
+
+function hydrateActivity(activity) {
+  const distance = Math.max(0, Number(activity?.distance) || 0);
+  const needsSwimMigration = isSwimmingActivity(activity?.type) && activity?.distanceUnit !== "miles";
+  return {
+    ...activity,
+    distance: needsSwimMigration ? distance / YARDS_PER_MILE : distance,
+    distanceUnit: "miles"
   };
 }
 
@@ -398,9 +411,9 @@ function parseGarminCsv(csvText) {
     const type = cleanText(getCell(row, columns.type));
     const title = cleanText(getCell(row, columns.title)) || type || "Activity";
     const rawAscent = parseAscentFeet(getCell(row, columns.ascent), ascentHeader);
-    const excludedAscent = normalizeHeader(type) === "resortskiing";
+    const excludedAscent = normalizeHeader(type) === "resortskiing" || isSwimmingActivity(type);
     const ascent = excludedAscent ? 0 : Math.max(0, Math.round(rawAscent ?? 0));
-    const distance = columns.distance === -1 ? 0 : Math.max(0, parseDistanceMiles(getCell(row, columns.distance), distanceHeader));
+    const distance = columns.distance === -1 ? 0 : Math.max(0, parseDistanceMiles(getCell(row, columns.distance), distanceHeader, type));
     const durationSeconds = columns.duration === -1 ? 0 : Math.max(0, parseDurationSeconds(getCell(row, columns.duration)));
 
     if (rawAscent == null) blanks += 1;
@@ -412,6 +425,7 @@ function parseGarminCsv(csvText) {
       type,
       ascent,
       distance,
+      distanceUnit: "miles",
       durationSeconds,
       ascentExcluded: excludedAscent ? 1 : 0
     });
@@ -421,7 +435,7 @@ function parseGarminCsv(csvText) {
 
   activities.sort((a, b) => new Date(a.date) - new Date(b.date));
   const blankNote = blanks ? ` Treated blank ascent as 0 ft for ${blanks.toLocaleString()} ${blanks === 1 ? "activity" : "activities"}.` : "";
-  const excludedNote = excluded ? ` Removed ascent from ${excluded.toLocaleString()} Resort skiing ${excluded === 1 ? "activity" : "activities"}.` : "";
+  const excludedNote = excluded ? ` Ignored ascent for ${excluded.toLocaleString()} swimming or Resort skiing ${excluded === 1 ? "activity" : "activities"}.` : "";
   return {
     activities,
     note: `${activities.length.toLocaleString()} activities loaded. Assumed ascent values are feet, matching Garmin's exported units.${blankNote}${excludedNote}`
@@ -461,20 +475,14 @@ function mergeActivity(existing, incoming) {
     type: cleanText(incoming.type).length >= cleanText(existing.type).length ? incoming.type : existing.type,
     ascent: incoming.ascent > 0 ? incoming.ascent : existing.ascent,
     distance: incoming.distance > 0 ? incoming.distance : existing.distance,
+    distanceUnit: "miles",
     durationSeconds: incoming.durationSeconds > 0 ? incoming.durationSeconds : existing.durationSeconds,
     ascentExcluded: existing.ascentExcluded || incoming.ascentExcluded ? 1 : 0
   };
 }
 
 function activityFingerprint(activity) {
-  return [
-    new Date(activity.date).toISOString(),
-    normalizeHeader(activity.type),
-    normalizeHeader(activity.title),
-    Number(activity.distance || 0).toFixed(3),
-    Math.round(activity.durationSeconds || 0),
-    Math.round(activity.ascent || 0)
-  ].join("|");
+  return new Date(activity.date).toISOString();
 }
 
 function activityScore(activity) {
@@ -568,12 +576,17 @@ function parseAscentFeet(value, header) {
   return /meter|\(m\)|\sm$/i.test(header) ? numeric * 3.28084 : numeric;
 }
 
-function parseDistanceMiles(value, header) {
+function parseDistanceMiles(value, header, activityType = "") {
   const text = cleanText(value);
   if (!text || text === "--") return 0;
   const numeric = Number.parseFloat(text.replace(/,/g, "").replace(/[^0-9.-]/g, ""));
   if (!Number.isFinite(numeric)) return 0;
+  if (isSwimmingActivity(activityType)) return numeric / YARDS_PER_MILE;
   return /kilometer|kilometre|\bkm\b/i.test(`${header} ${text}`) ? numeric * 0.621371 : numeric;
+}
+
+function isSwimmingActivity(activityType) {
+  return normalizeHeader(activityType).includes("swim");
 }
 
 function parseDurationSeconds(value) {

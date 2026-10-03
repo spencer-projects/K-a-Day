@@ -430,7 +430,8 @@ function normalizeHeader(value) {
 }
 
 function shouldExcludeAscent(activityType) {
-  return EXCLUDED_ASCENT_TYPES.has(normalizeHeader(activityType));
+  const normalizedType = normalizeHeader(activityType);
+  return EXCLUDED_ASCENT_TYPES.has(normalizedType) || normalizedType.includes("swim");
 }
 
 function niceCeil(value) {
