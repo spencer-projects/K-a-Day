@@ -51,7 +51,16 @@ The `User` field is now a local profile name, not a shared account.
 3. Choose CSV.
 4. Upload that CSV in K-A-Day.
 
-The parser looks for common Garmin columns including `Date`, `Activity Type`, `Title`, `Total Ascent`, `Elevation Gain`, `Distance`, and `Time`.
+The parser looks for common Garmin columns including `Date`, `Activity Type`, `Title`, `Ascent`, `Total Ascent`, `Elevation Gain`, `Distance`, and `Time`. When an export has both `Ascent` and `Total Ascent`, it uses `Ascent` for elevation gain. Re-uploading an export repairs previously imported ascent values without adding duplicate activities.
+
+## Import regression checks
+
+```sh
+node --test tests/garmin-import.test.cjs
+python3 -m unittest discover -s tests -p 'test_*.py'
+```
+
+Set `GARMIN_TEST_CSV` to the path of the original 40-activity regression export to also verify its 26,754 ft total. The export itself is not stored in the repository.
 
 ## Goal math
 

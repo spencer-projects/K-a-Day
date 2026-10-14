@@ -219,10 +219,7 @@ def find_columns(headers: list[str]) -> ColumnMap:
     columns = ColumnMap(
         date=find_header_index(normalized_headers, ["date", "activitydate", "starttime", "startdate"]),
         activity_type=find_header_index(normalized_headers, ["activitytype", "type", "sport"]),
-        ascent=find_header_index(
-            normalized_headers,
-            ["totalascent", "elevationgain", "elevgain", "ascent", "gain", "climb"],
-        ),
+        ascent=find_ascent_header_index(normalized_headers),
         distance=find_header_index(normalized_headers, ["distance", "mileage"]),
         duration=find_header_index(normalized_headers, ["time", "duration", "movingtime", "elapsedtime"]),
     )
@@ -237,6 +234,17 @@ def find_columns(headers: list[str]) -> ColumnMap:
     if missing:
         raise ValueError(f"Could not find required column(s): {', '.join(missing)}")
     return columns
+
+
+def find_ascent_header_index(headers: list[str]) -> int:
+    # New Garmin exports include a separate climbing-only "Total Ascent" field.
+    # Prefer the activity's "Ascent", including a units suffix, when both exist.
+    for candidate in ("ascent", "totalascent", "elevationgain", "elevgain", "gain", "climb"):
+        pattern = rf"{candidate}(?:ft|feet|m|meters?|metres?)?"
+        for index, header in enumerate(headers):
+            if re.fullmatch(pattern, header):
+                return index
+    return -1
 
 
 def find_header_index(headers: list[str], candidates: Iterable[str]) -> int:
@@ -304,7 +312,7 @@ def parse_ascent_feet(value: str, header: str) -> int:
     numeric = parse_number(text)
     if not math.isfinite(numeric):
         return 0
-    is_meters = bool(re.search(r"meter|\(m\)|\sm$", header, re.I) or re.search(r"\d\s?m$", text, re.I))
+    is_meters = bool(re.search(r"met(?:er|re)|\(m\)|\sm$", header, re.I) or re.search(r"\d\s?m$", text, re.I))
     return round(numeric * 3.28084) if is_meters else round(numeric)
 
 

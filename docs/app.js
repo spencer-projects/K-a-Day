@@ -389,7 +389,7 @@ function parseGarminCsv(csvText) {
     date: findHeaderIndex(normalizedHeaders, ["date", "activitydate", "starttime", "startdate"]),
     type: findHeaderIndex(normalizedHeaders, ["activitytype", "type", "sport"]),
     title: findHeaderIndex(normalizedHeaders, ["title", "activityname", "name"]),
-    ascent: findHeaderIndex(normalizedHeaders, ["totalascent", "elevationgain", "elevgain", "ascent", "gain", "climb"]),
+    ascent: findAscentHeaderIndex(normalizedHeaders),
     distance: findHeaderIndex(normalizedHeaders, ["distance", "mileage"]),
     duration: findHeaderIndex(normalizedHeaders, ["time", "duration", "movingtime", "elapsedtime"])
   };
@@ -456,8 +456,9 @@ function mergeActivities(existingActivities, incomingActivities) {
       added += 1;
       continue;
     }
-    if (activityScore(activity) > activityScore(existing)) {
-      byFingerprint.set(fingerprint, mergeActivity(existing, activity));
+    const merged = mergeActivity(existing, activity);
+    if (Object.keys(merged).some(key => merged[key] !== existing[key])) {
+      byFingerprint.set(fingerprint, merged);
       replaced += 1;
     } else {
       skipped += 1;
@@ -483,16 +484,6 @@ function mergeActivity(existing, incoming) {
 
 function activityFingerprint(activity) {
   return new Date(activity.date).toISOString();
-}
-
-function activityScore(activity) {
-  let score = 0;
-  if (cleanText(activity.title)) score += 1;
-  if (cleanText(activity.type)) score += 1;
-  if (Number(activity.distance || 0) > 0) score += 2;
-  if (Number(activity.durationSeconds || 0) > 0) score += 2;
-  if (Number(activity.ascent || 0) > 0 || activity.ascentExcluded) score += 1;
-  return score;
 }
 
 function splitCsvRows(text) {
@@ -552,6 +543,17 @@ function findHeaderIndex(headers, candidates) {
   return -1;
 }
 
+function findAscentHeaderIndex(headers) {
+  // Garmin's separate Total Ascent field can contain climbing statistics.
+  // Prefer elevation Ascent, including unit suffixes, over that legacy alias.
+  for (const candidate of ["ascent", "totalascent", "elevationgain", "elevgain", "gain", "climb"]) {
+    const pattern = new RegExp(`^${candidate}(?:ft|feet|foot|m|meters?|metres?)?$`);
+    const index = headers.findIndex(header => pattern.test(header));
+    if (index !== -1) return index;
+  }
+  return -1;
+}
+
 function getCell(row, index) {
   return index >= 0 && index < row.length ? row[index] : "";
 }
@@ -573,7 +575,7 @@ function parseAscentFeet(value, header) {
   if (!text || text === "--") return null;
   const numeric = Number.parseFloat(text.replace(/,/g, "").replace(/[^0-9.-]/g, ""));
   if (!Number.isFinite(numeric)) return null;
-  return /meter|\(m\)|\sm$/i.test(header) ? numeric * 3.28084 : numeric;
+  return /met(?:er|re)|\(m\)|\sm$/i.test(header) ? numeric * 3.28084 : numeric;
 }
 
 function parseDistanceMiles(value, header, activityType = "") {
